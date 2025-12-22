@@ -41,17 +41,22 @@ mkfs.ext4 "/dev/mapper/$CRYPT_NAME"
 ### 4. MOUNTING
 echo "Mounting filesystems..."
 mount "/dev/mapper/$CRYPT_NAME" /mnt
-mkdir /mnt/efi
-mount "${DISK}1" /mnt/efi
+mkdir -p /mnt/boot
+mount -o fmask=0077,dmask=0077 "${DISK}1" /mnt/boot
 
 ### 5. PACKAGE INSTALLATION
 echo "Installing base system (LTS kernel)..."
 pacstrap /mnt \
   base linux-lts linux-firmware \
   openssh sudo restic neovim \
-  dropbear mkinitcpio-netconf
+  mkinitcpio-dropbear mkinitcpio-netconf
 
 genfstab -U /mnt >> /mnt/etc/fstab
+
+# Setup resolv.conf symlink for systemd-resolved BEFORE chroot
+# This avoids "Device or resource busy" because arch-chroot bind-mounts resolv.conf
+mkdir -p /mnt/etc
+ln -sf /run/systemd/resolve/stub-resolv.conf /mnt/etc/resolv.conf
 
 ### 6. SYSTEM CONFIGURATION (CHROOT)
 # Prompt for passwords before entering chroot to avoid stdin redirection issues
@@ -117,10 +122,6 @@ systemctl enable sshd
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
 
-# Robustly create the resolv.conf symlink
-rm -f /etc/resolv.conf
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || echo "Warning: Could not create resolv.conf symlink, might be a bind mount"
-
 # Create a default DHCP network configuration for ethernet
 cat <<NET > /etc/systemd/network/20-wired.network
 [Match]
@@ -153,8 +154,10 @@ sed -i 's/^HOOKS=.*/HOOKS=(base udev autodetect modconf keyboard block encrypt n
 
 ROOT_UUID=\$(blkid -s UUID -o value ${DISK}2)
 
+# Install systemd-boot to /boot (the EFI partition)
 bootctl install
 
+mkdir -p /boot/loader/entries
 cat > /boot/loader/entries/arch.conf <<BOOT
 title   Arch Linux (LTS)
 linux   /vmlinuz-linux-lts
@@ -166,8 +169,9 @@ mkinitcpio -P
 EOF
 
 echo "✅ Install complete"
-echo "➡️ Reboot the server"
-echo "➡️ SSH into initramfs to unlock disk:"
+echo "➡️  Reboot the server"
+echo "➡️  SSH into initramfs to unlock disk:"
 echo "   ssh root@<server-ip>"
-echo "   cryptroot-unlock"
-echo "➡️ After unlock, SSH into the system as root or $ADMIN_USERNAME"
+echo "   (You will be prompted for the LUKS password automatically)"
+echo "➡️  After unlock, SSH into the system as root or $ADMIN_USERNAME"
+
