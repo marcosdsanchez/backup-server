@@ -116,7 +116,10 @@ systemctl enable sshd
 # Enable systemd-networkd and systemd-resolved
 systemctl enable systemd-networkd
 systemctl enable systemd-resolved
-ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf
+
+# Robustly create the resolv.conf symlink
+rm -f /etc/resolv.conf
+ln -sf /run/systemd/resolve/stub-resolv.conf /etc/resolv.conf || echo "Warning: Could not create resolv.conf symlink, might be a bind mount"
 
 # Create a default DHCP network configuration for ethernet
 cat <<NET > /etc/systemd/network/20-wired.network
