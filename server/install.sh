@@ -54,6 +54,28 @@ pacstrap /mnt \
 genfstab -U /mnt >> /mnt/etc/fstab
 
 ### 6. SYSTEM CONFIGURATION (CHROOT)
+# Prompt for passwords before entering chroot to avoid stdin redirection issues
+echo "--- User Configuration ---"
+if [ -n "$ADMIN_USERNAME" ]; then
+    while true; do
+        read -s -p "Enter password for $ADMIN_USERNAME: " ADMIN_PASS
+        echo ""
+        read -s -p "Confirm password for $ADMIN_USERNAME: " ADMIN_PASS_CONFIRM
+        echo ""
+        [ "$ADMIN_PASS" = "$ADMIN_PASS_CONFIRM" ] && break
+        echo "Passwords do not match. Try again."
+    done
+fi
+
+while true; do
+    read -s -p "Enter password for root: " ROOT_PASS
+    echo ""
+    read -s -p "Confirm password for root: " ROOT_PASS_CONFIRM
+    echo ""
+    [ "$ROOT_PASS" = "$ROOT_PASS_CONFIRM" ] && break
+    echo "Passwords do not match. Try again."
+done
+
 echo "Entering chroot to configure system..."
 arch-chroot /mnt /bin/bash <<EOF
 set -e
@@ -68,17 +90,19 @@ locale-gen
 echo "LANG=$LOCALE" > /etc/locale.conf
 
 ### --- USERS & SSH ---
+# Set root password
+chpasswd <<< "root:$ROOT_PASS"
+unset ROOT_PASS
+unset ROOT_PASS_CONFIRM
+
 # If ADMIN_USERNAME is provided, create a sudo user
 if [ -n "$ADMIN_USERNAME" ]; then
     useradd -m -G wheel "$ADMIN_USERNAME"
-    echo "Set password for $ADMIN_USERNAME:"
-    passwd "$ADMIN_USERNAME"
+    chpasswd <<< "$ADMIN_USERNAME:$ADMIN_PASS"
+    unset ADMIN_PASS
+    unset ADMIN_PASS_CONFIRM
     sed -i 's/# %wheel ALL=(ALL:ALL) ALL/%wheel ALL=(ALL:ALL) ALL/' /etc/sudoers
 fi
-
-# Set root password (optional, encouraged to use keys only)
-echo "Set root password:"
-passwd root
 
 # SSH Setup
 mkdir -p /root/.ssh
