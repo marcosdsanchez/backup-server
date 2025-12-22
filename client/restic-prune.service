@@ -1,0 +1,8 @@
+[Unit]
+Description=Restic Prune Service
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/restic/restic.env
+ExecStart=/usr/bin/restic forget --verbose --prune --keep-daily $KEEP_DAILY --keep-weekly $KEEP_WEEKLY --keep-monthly $KEEP_MONTHLY
