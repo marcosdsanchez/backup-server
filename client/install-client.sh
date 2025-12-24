@@ -20,13 +20,13 @@ fi
 # =============================================================================
 echo "--- Installing Restic ---"
 if command -v pacman &> /dev/null; then
-    pacman -S --noconfirm --needed restic openssh
+    pacman -S --noconfirm --needed restic openssh libnotify
 elif command -v apt-get &> /dev/null; then
-    apt-get update && apt-get install -y restic openssh-client
+    apt-get update && apt-get install -y restic openssh-client libnotify-bin
 elif command -v dnf &> /dev/null; then
-    dnf install -y restic openssh-clients
+    dnf install -y restic openssh-clients libnotify
 else
-    echo "Unknown package manager. Please install restic manually."
+    echo "Unknown package manager. Please install restic and libnotify manually."
     exit 1
 fi
 
@@ -262,10 +262,19 @@ if [ -f "restic-backup.timer" ]; then
     # Prune service (optional check if file exists)
     [ -f "restic-prune.service" ] && cp restic-prune.service /etc/systemd/system/
     [ -f "restic-prune.timer" ] && cp restic-prune.timer /etc/systemd/system/
+
+    # Status check service
+    if [ -f "restic-check-status.sh" ]; then
+        cp restic-check-status.sh /usr/local/bin/
+        chmod +x /usr/local/bin/restic-check-status.sh
+        cp restic-check-status.service /etc/systemd/system/
+        cp restic-check-status.timer /etc/systemd/system/
+    fi
     
     systemctl daemon-reload
     systemctl enable --now restic-backup.timer
     [ -f "restic-prune.timer" ] && systemctl enable --now restic-prune.timer
+    [ -f "restic-check-status.timer" ] && systemctl enable --now restic-check-status.timer
 else
     echo "Warning: restic-backup.timer not found in current directory."
     echo "Systemd services were NOT installed."

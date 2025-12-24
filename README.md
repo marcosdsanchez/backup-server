@@ -8,6 +8,7 @@ Designed for simplicity and security using standard Linux tools (SSH/SFTP).
 - **Automated OS Install**: Minimal Arch Linux with `linux-lts`.
 - **Secure**: Backups via SFTP (SSH) with key-based authentication.
 - **Private**: Restic client-side encryption (data is encrypted before leaving the client).
+- **Proactive**: Daily checks to ensure backups are running, with desktop notifications if they fail for over a week.
 - **Simple**: No Docker, no complex web services. Just standard SSH.
 
 ## Quick Start
@@ -102,6 +103,15 @@ sudo systemctl status restic-backup.timer
 ```bash
 sudo systemctl start restic-backup
 ```
+
+**Check Health Monitoring**:
+The system automatically checks every day if a backup has succeeded in the last 7 days. You can check the status manually:
+```bash
+sudo systemctl status restic-check-status.timer
+# Run the check now
+sudo systemctl start restic-check-status
+```
+If a backup hasn't run in a week, you will receive a desktop notification (via `notify-send`).
 
 **List Snapshots**:
 ```bash
