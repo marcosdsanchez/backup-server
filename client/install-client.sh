@@ -217,15 +217,27 @@ if [ ! -f "$ENV_FILE" ]; then
     BACKUP_ON_CALENDAR="${BACKUP_ON_CALENDAR:-*-*-* 03:00:00}"
 
     cat <<EOF > "$ENV_FILE"
-RESTIC_REPOSITORY=$REPO_URL
-RESTIC_PASSWORD=$RESTIC_PASSWORD
+RESTIC_REPOSITORY="$RESTIC_REPOSITORY"
+RESTIC_PASSWORD="$RESTIC_PASSWORD"
 BACKUP_PATHS="$BACKUP_PATHS"
-KEEP_DAILY=$KEEP_DAILY
-KEEP_WEEKLY=$KEEP_WEEKLY
-KEEP_MONTHLY=$KEEP_MONTHLY
+KEEP_DAILY="$KEEP_DAILY"
+KEEP_WEEKLY="$KEEP_WEEKLY"
+KEEP_MONTHLY="$KEEP_MONTHLY"
 EOF
     chmod 600 "$ENV_FILE"
-    echo "Configured $ENV_FILE with repository: $REPO_URL"
+
+    # Create excludes file if it doesn't exist
+    EXCLUDES_FILE="$CONFIG_DIR/excludes.txt"
+    if [ ! -f "$EXCLUDES_FILE" ]; then
+        cat <<EOF > "$EXCLUDES_FILE"
+# Add files/folders to exclude here, one per line
+# Example:
+# /home/*/.cache
+# /home/*/.local/share/Trash
+EOF
+        chmod 600 "$EXCLUDES_FILE"
+    fi
+    echo "Configured $ENV_FILE and $EXCLUDES_FILE"
 fi
 
 # =============================================================================
@@ -269,6 +281,12 @@ if [ -f "restic-backup.timer" ]; then
         chmod +x /usr/local/bin/restic-check-status.sh
         cp restic-check-status.service /etc/systemd/system/
         cp restic-check-status.timer /etc/systemd/system/
+    fi
+
+    # Excludes file
+    if [ -f "excludes.txt" ]; then
+        cp excludes.txt /etc/restic/
+        chmod 600 /etc/restic/excludes.txt
     fi
     
     systemctl daemon-reload

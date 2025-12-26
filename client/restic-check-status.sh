@@ -2,14 +2,16 @@
 
 # Load restic environment
 if [ -f /etc/restic/restic.env ]; then
+    set -a
     source /etc/restic/restic.env
+    set +a
 else
     echo "Restic environment file not found at /etc/restic/restic.env"
     exit 1
 fi
 
 # Get the last snapshot time in seconds since epoch
-LAST_SNAPSHOT_JSON=$(restic snapshots --last --json)
+LAST_SNAPSHOT_JSON=$(restic snapshots --latest 1 --json)
 LAST_SNAPSHOT_TIME=$(echo "$LAST_SNAPSHOT_JSON" | grep -oP '"time":"\K[^"]+' | head -n 1)
 
 if [ -z "$LAST_SNAPSHOT_TIME" ]; then

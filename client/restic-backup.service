@@ -6,7 +6,7 @@ Wants=network-online.target
 [Service]
 Type=oneshot
 EnvironmentFile=/etc/restic/restic.env
-ExecStart=/usr/bin/restic backup --verbose $BACKUP_PATHS
+ExecStart=/usr/bin/restic backup --verbose --exclude-file=/etc/restic/excludes.txt $BACKUP_PATHS 
 
 [Install]
 WantedBy=multi-user.target
